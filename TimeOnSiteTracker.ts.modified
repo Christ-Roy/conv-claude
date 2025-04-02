@@ -1,0 +1,70 @@
+/**
+ * Utilitaire pour suivre le temps passé sur le site
+ * Envoie un événement à Google Analytics lorsqu'un utilisateur reste sur le site
+ */
+
+declare global {
+  interface Window {
+    dataLayer: any[];
+    gtag: (...args: any[]) => void;
+  }
+}
+
+export const initTimeOnSiteTracking = (): void => {
+  // Durée de 2 minutes (120000 ms) pour la conversion réelle
+  // Pour les tests, vous pouvez utiliser 10 secondes (10000 ms)
+  const minDuration = 120000; // 2 minutes en production
+  
+  console.log('Suivi du temps sur site initialisé. Attente de ' + minDuration/1000 + ' secondes...');
+  
+  // Vérifier si on a déjà initié le tracking (utilise sessionStorage)
+  const hasTracked = sessionStorage.getItem('timeOnSiteTracked');
+  if (hasTracked === 'true') {
+    console.log('Tracking déjà effectué dans cette session.');
+    return;
+  }
+
+  // Configurer le minuteur
+  setTimeout(() => {
+    console.log('Délai atteint! Envoi des événements de conversion...');
+    
+    try {
+      // Ajouter au dataLayer pour GTM - C'EST CETTE PARTIE QUI DÉCLENCHE LE TRIGGER GTM
+      if (window.dataLayer) {
+        console.log('dataLayer détecté, ajout de l\'événement time_on_site_2min');
+        window.dataLayer.push({
+          'event': 'time_on_site_2min',  // Le nom exact de l'événement pour le trigger GTM
+          'category': 'Engagement',
+          'action': 'TimeOnSite',
+          'label': '2min',
+          'value': 150
+        });
+      } else {
+        console.error('dataLayer non disponible');
+      }
+      
+      // La partie suivante est secondaire si GTM est correctement configuré
+      // GTM se chargera d'envoyer l'événement à Google Ads
+      if (window.gtag) {
+        console.log('gtag détecté, envoi de l\'événement d\'engagement');
+        
+        window.gtag('event', 'engagement', {
+          'event_category': 'Engagement',
+          'event_label': 'Temps sur site > 2min',
+          'value': 1
+        });
+      } else {
+        console.warn('gtag non disponible, mais ce n\'est pas un problème si GTM est configuré');
+      }
+      
+      console.log('Conversion time_on_site_2min enregistrée après délai');
+      
+      // Marquer comme suivi pour cette session
+      sessionStorage.setItem('timeOnSiteTracked', 'true');
+    } catch (error) {
+      console.error('Erreur lors du suivi de conversion:', error);
+    }
+  }, minDuration);
+};
+
+export default initTimeOnSiteTracking;
